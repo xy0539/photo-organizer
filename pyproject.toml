@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "photo-organizer"
+version = "1.0.0"
+description = "按拍摄时间与地理位置整理照片和视频的轻量命令行工具"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+keywords = ["photo", "organizer", "exif", "gps", "geocode", "video", "cli"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Graphics",
+]
+dependencies = [
+    "pygeo-cn",
+]
+
+[project.scripts]
+photo-organizer = "photo_organizer.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/xy0539/photo-organizer"
+
+[tool.setuptools.packages.find]
+include = ["photo_organizer*"]
