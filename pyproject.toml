@@ -9,6 +9,7 @@ description = "按拍摄时间与地理位置整理照片和视频的轻量命�
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.8"
+authors = [{name = "xy0539", url = "https://github.com/xy0539"}]
 keywords = ["photo", "organizer", "exif", "gps", "geocode", "video", "cli"]
 classifiers = [
     "Development Status :: 4 - Beta",

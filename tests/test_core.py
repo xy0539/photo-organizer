@@ -136,15 +136,16 @@ def test_no_gps_assigned_to_nearest():
     print("[PASS] 无 GPS → 归入时间最近的组")
 
 
-def test_all_no_gps_grouped_by_date():
+def test_all_no_gps_grouped_by_month():
     files = [
         _meta("a.jpg", datetime(2026, 8, 25, 10, 0), None),
         _meta("b.jpg", datetime(2026, 8, 25, 18, 0), None),
         _meta("c.jpg", datetime(2026, 8, 26, 10, 0), None),
+        _meta("d.jpg", datetime(2026, 9, 1, 10, 0), None),
     ]
     groups = cluster_media(files, distance_km=5.0)
-    assert len(groups) == 2, f"全部无 GPS 应按天分 2 组，实际 {len(groups)}"
-    print("[PASS] 全部无 GPS → 按天分组")
+    assert len(groups) == 2, f"全部无 GPS 应按月分 2 组，实际 {len(groups)}"
+    print("[PASS] 全部无 GPS → 按月分组")
 
 
 def test_haversine():
@@ -176,7 +177,7 @@ def main():
     test_same_location_diff_day_split()
     test_diff_location_same_day_split()
     test_no_gps_assigned_to_nearest()
-    test_all_no_gps_grouped_by_date()
+    test_all_no_gps_grouped_by_month()
     test_geocode()
     print("\n全部测试通过 ✓")
 

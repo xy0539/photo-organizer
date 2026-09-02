@@ -1,9 +1,13 @@
 """时空聚类：按拍摄时间 + GPS 距离对媒体文件分组。
 
-分组规则：
-- 同一地点（GPS 距离 ≤ 阈值）+ 同一天 → 同一组
-- 换地点 / 跨天 → 新组
-无 GPS 的文件按时间就近归入最近的组。
+分组规则（核心逻辑）：
+1. 有 GPS 的文件：按时间排序后顺序遍历，同一地点（距离 ≤ 阈值）且同一天 → 归入当前组；换地点或跨天 → 新建组
+2. 无 GPS 的文件：在所有 GPS 组建好后处理——
+   a. 若有同日期的 GPS 组 → 归入时间最近的那个组（同一天大概率在同一地点）
+   b. 若没有同日期的组 → 按月份归入「YYYY-MM 未知地点」组（同月合并，避免一天一个文件夹）
+   c. 若同月也没有未知地点组 → 新建月度组
+
+这样保证：有位置信息的文件精细到天+地点，无位置信息的文件粗放到月，减少碎片文件夹。
 """
 
 import math
@@ -87,21 +91,22 @@ def cluster_media(files, distance_km=5.0):
             g.ref_gps = f.gps
             groups.append(g)
 
-    # 无 GPS 文件归入时间最近的组
+    # 无 GPS 文件：先找同日期的GPS组归入，找不到则按月份归入未知地点组
     for f in without_gps:
-        target = _nearest_group(groups, f.time)
-        if target is not None:
+        same_date = [g for g in groups if g.date == f.time.date()]
+        if same_date:
+            target = _nearest_group(same_date, f.time)
             target.add(f)
-
-    # 全部无 GPS：按天分组
-    if not groups:
-        by_date = {}
-        for f in without_gps:
-            d = f.time.date()
-            if d not in by_date:
+        else:
+            file_month = (f.time.year, f.time.month)
+            same_month = [g for g in groups
+                          if g.ref_gps is None
+                          and (g.date.year, g.date.month) == file_month]
+            if same_month:
+                same_month[0].add(f)
+            else:
                 g = Group()
-                by_date[d] = g
+                g.add(f)
                 groups.append(g)
-            by_date[d].add(f)
 
     return groups

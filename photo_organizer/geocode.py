@@ -1,8 +1,11 @@
 """离线逆地理编码：GPS 坐标 → 汉字地名。
 
 使用 PyGeoCN（纯 Python，自带数据，不联网），粒度到区/县级。
-未安装 PyGeoCN 时回退为坐标字符串。
+未安装 PyGeoCN 时回退为坐标字符串，并提示用户安装。
 """
+
+import subprocess
+import sys
 
 try:
     from PyGeoCN.regeo import regeo as _pygeocn_regeo
@@ -47,6 +50,26 @@ def _format_name(province, city, district):
     return "·".join(parts)
 
 
+def _try_regeo(lat, lon):
+    """尝试解析坐标，失败时向8个方向微调重试（沿海/水域容错）。"""
+    # 先试原始坐标
+    result = _pygeocn_regeo(lat, lon)
+    if result and result.get("status") == 1:
+        return result
+
+    # 向8个方向微调重试，逐步扩大范围
+    for offset in (0.02, 0.05):
+        for dlat, dlon in [
+            (offset, 0), (-offset, 0), (0, offset), (0, -offset),
+            (offset, offset), (offset, -offset),
+            (-offset, offset), (-offset, -offset),
+        ]:
+            result = _pygeocn_regeo(lat + dlat, lon + dlon)
+            if result and result.get("status") == 1:
+                return result
+    return None
+
+
 def get_location_name(lat, lon):
     """返回坐标对应的汉字地名。无 GPS 时不应调用本函数。"""
     key = _cache_key(lat, lon)
@@ -59,8 +82,8 @@ def get_location_name(lat, lon):
         return name
 
     try:
-        result = _pygeocn_regeo(lat, lon)
-        if result and result.get("status") == 1:
+        result = _try_regeo(lat, lon)
+        if result:
             addr = result.get("address", {})
             name = _format_name(
                 addr.get("province"),
@@ -79,3 +102,38 @@ def get_location_name(lat, lon):
 def is_available():
     """PyGeoCN 是否已安装。"""
     return _AVAILABLE
+
+
+def ensure_available():
+    """检查 PyGeoCN 是否可用，不可用则提示用户自动安装。"""
+    global _AVAILABLE, _pygeocn_regeo
+    if _AVAILABLE:
+        return True
+
+    print("未安装 PyGeoCN，地名将以坐标显示。")
+    try:
+        answer = input("是否现在安装 PyGeoCN 以显示中文地名？(y/n): ").strip().lower()
+    except EOFError:
+        return False
+    if answer != "y":
+        return False
+
+    print("正在安装 PyGeoCN ...")
+    result = subprocess.run(
+        [sys.executable, "-m", "pip", "install", "pygeo-cn"],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        print(f"安装失败: {result.stderr.strip()}")
+        print("请手动运行: pip install pygeo-cn")
+        return False
+
+    try:
+        from PyGeoCN.regeo import regeo as _new_regeo
+        _pygeocn_regeo = _new_regeo
+        _AVAILABLE = True
+        print("安装成功！地名将显示为中文。")
+        return True
+    except ImportError:
+        print("安装完成但导入失败，请手动运行: pip install pygeo-cn")
+        return False
